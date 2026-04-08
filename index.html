@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Verborgen Bedrijven</title>
+  <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Google Sans', 'Inter', system-ui, sans-serif; background: #fff; color: #111; display: flex; height: 100vh; overflow: hidden; }
+    button { font-family: inherit; cursor: pointer; }
+    button:focus { outline: none; }
+    ::-webkit-scrollbar { width: 3px; } ::-webkit-scrollbar-thumb { background: #ddd; }
+
+    /* Sidebar */
+    #sidebar { width: 56px; border-right: 1px solid #e8e8e8; display: flex; flex-direction: column; transition: width .28s cubic-bezier(.4,0,.2,1); overflow: hidden; flex-shrink: 0; }
+    #sidebar.open { width: 200px; }
+    #logo { height: 56px; display: flex; align-items: center; padding: 0 16px; gap: 12px; border-bottom: 1px solid #e8e8e8; cursor: pointer; flex-shrink: 0; }
+    #logo span { font-size: 14px; color: #111; white-space: nowrap; opacity: 0; transition: opacity .2s; letter-spacing: -.01em; }
+    #sidebar.open #logo span { opacity: 1; }
+    nav { flex: 1; padding: 8px 0; }
+    .nav-btn { display: flex; align-items: center; gap: 14px; width: 100%; padding: 10px 19px; background: none; border: none; color: #bbb; transition: color .15s; }
+    .nav-btn.active { color: #111; }
+    .nav-btn .label { font-size: 13px; white-space: nowrap; opacity: 0; transition: opacity .18s; }
+    #sidebar.open .nav-btn .label { opacity: 1; }
+    #sidebar-toggle { height: 44px; display: flex; align-items: center; justify-content: center; background: none; border: none; border-top: 1px solid #e8e8e8; color: #ccc; transition: color .15s; width: 100%; }
+    #sidebar-toggle:hover { color: #888; }
+
+    /* Main */
+    #main { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+    #topbar { height: 56px; border-bottom: 1px solid #e8e8e8; display: flex; align-items: center; padding: 0 40px; font-size: 15px; flex-shrink: 0; }
+    #content { flex: 1; overflow-y: auto; padding: 40px; }
+    .page { display: none; max-width: 680px; }
+    .page.active { display: block; }
+
+    /* Components */
+    .stats-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 1px; background: #e8e8e8; border: 1px solid #e8e8e8; margin-bottom: 40px; }
+    .stat-box { background: #fff; padding: 22px 24px; }
+    .stat-value { font-size: 28px; color: #111; margin-bottom: 6px; }
+    .stat-label { font-size: 10px; color: #bbb; text-transform: uppercase; letter-spacing: .09em; }
+
+    .section-label { font-size: 10px; color: #aaa; text-transform: uppercase; letter-spacing: .09em; margin-bottom: 14px; }
+
+    .tab-bar { display: flex; border-bottom: 1px solid #e8e8e8; margin-bottom: 0; }
+    .tab { padding: 8px 18px; background: none; border: none; border-bottom: 2px solid transparent; font-size: 13px; color: #aaa; transition: all .15s; margin-bottom: -1px; }
+    .tab.active { color: #111; border-bottom-color: #111; }
+
+    .table-header { display: grid; grid-template-columns: 1fr 100px 90px 20px; gap: 16px; padding: 10px 0; border-bottom: 1px solid #111; }
+    .table-header span { font-size: 10px; color: #aaa; text-transform: uppercase; letter-spacing: .09em; }
+    .table-row { display: grid; grid-template-columns: 1fr 100px 90px 20px; gap: 16px; align-items: center; padding: 14px 0; border-bottom: 1px solid #f0f0f0; cursor: pointer; transition: background .1s; }
+    .table-row:hover { background: #fafafa; }
+    .table-row:last-child { border-bottom: none; }
+    .company-name { font-size: 14px; color: #111; margin-bottom: 2px; }
+    .company-website { font-size: 12px; color: #aaa; }
+    .sector-text { font-size: 12px; color: #888; }
+
+    .score-bar-wrap { display: flex; align-items: center; gap: 8px; }
+    .score-track { flex: 1; height: 1px; background: #e0e0e0; }
+    .score-fill { height: 100%; background: #111; transition: width .3s; }
+    .score-pct { font-size: 12px; color: #111; min-width: 30px; text-align: right; }
+
+    .history-list { border: 1px solid #e8e8e8; }
+    .history-row { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid #f0f0f0; cursor: pointer; transition: background .1s; }
+    .history-row:last-child { border-bottom: none; }
+    .history-row:hover { background: #fafafa; }
+    .history-title { font-size: 13px; color: #111; margin-bottom: 3px; }
+    .history-sub { font-size: 12px; color: #bbb; }
+
+    .form-label { font-size: 11px; color: #aaa; text-transform: uppercase; letter-spacing: .09em; margin-bottom: 12px; display: block; }
+    .sector-btns { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 28px; }
+    .sector-btn { padding: 7px 18px; border: 1px solid #e8e8e8; background: #fff; color: #777; font-size: 13px; transition: all .15s; }
+    .sector-btn.active { background: #111; color: #fff; border-color: #111; }
+    .slider-wrap { margin-bottom: 32px; }
+    .slider-labels { display: flex; justify-content: space-between; font-size: 11px; color: #ccc; margin-top: 6px; }
+
+    input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 1px; background: #ddd; outline: none; cursor: pointer; margin-top: 8px; }
+    input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: #111; cursor: pointer; transition: transform .15s; }
+    input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.2); }
+
+    .btn-primary { padding: 9px 24px; background: #111; color: #fff; border: none; font-size: 13px; display: inline-flex; align-items: center; gap: 8px; transition: background .15s; }
+    .btn-primary:disabled { background: #e0e0e0; color: #aaa; cursor: not-allowed; }
+    .spinner { width: 13px; height: 13px; border: 1.5px solid #aaa; border-top-color: #555; border-radius: 50%; animation: spin .7s linear infinite; display: inline-block; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .error-msg { font-size: 13px; color: #c00; margin-bottom: 16px; }
+    .empty-msg { font-size: 14px; color: #bbb; }
+
+    /* Modal */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.08); z-index: 300; display: flex; align-items: center; justify-content: center; }
+    .modal-box { background: #fff; border: 1px solid #111; max-width: 520px; width: calc(100% - 48px); max-height: 85vh; overflow-y: auto; padding: 32px 36px; }
+    .modal-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 28px; }
+    .modal-title { font-size: 18px; color: #111; margin-bottom: 4px; }
+    .modal-sub { font-size: 13px; color: #aaa; }
+    .close-btn { background: none; border: none; color: #aaa; cursor: pointer; padding: 0; display: flex; }
+    .criteria-table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
+    .criteria-table tr { border-top: 1px solid #f0f0f0; }
+    .criteria-table td { padding: 11px 0; font-size: 13px; }
+    .criteria-table td:last-child { text-align: right; }
+    .badge-hidden { font-size: 11px; color: #111; border-bottom: 1px solid #111; padding-bottom: 1px; }
+    .badge-visible { font-size: 11px; color: #aaa; }
+    .modal-summary { font-size: 13px; color: #777; line-height: 1.75; border-top: 1px solid #f0f0f0; padding-top: 16px; margin-top: 4px; }
+  </style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<div id="sidebar">
+  <div id="logo" onclick="toggleSidebar()">
+    <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+      <circle cx="11" cy="11" r="10.2" stroke="#111" stroke-width="1.2"/>
+      <circle cx="11" cy="11" r="7.6" stroke="#111" stroke-width="1.2"/>
+      <circle cx="11" cy="11" r="5" stroke="#111" stroke-width="1.2"/>
+      <circle cx="11" cy="11" r="2.5" stroke="#111" stroke-width="1.2"/>
+      <circle cx="11" cy="11" r="0.9" fill="#111"/>
+    </svg>
+    <span>Verborgen</span>
+  </div>
+  <nav>
+    <button class="nav-btn active" data-page="dashboard" onclick="navigate('dashboard', this)">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      <span class="label">Dashboard</span>
+    </button>
+    <button class="nav-btn" data-page="scan" onclick="navigate('scan', this)">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <span class="label">Nieuwe scan</span>
+    </button>
+    <button class="nav-btn" data-page="history" onclick="navigate('history', this)">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+      <span class="label">Geschiedenis</span>
+    </button>
+  </nav>
+  <button id="sidebar-toggle" onclick="toggleSidebar()">
+    <svg id="toggle-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg>
+  </button>
+</div>
+
+<!-- Main -->
+<div id="main">
+  <div id="topbar">Dashboard</div>
+  <div id="content">
+
+    <!-- Dashboard -->
+    <div id="page-dashboard" class="page active">
+      <div id="dash-stats" style="display:none">
+        <div class="stats-grid">
+          <div class="stat-box"><div class="stat-value" id="stat-found">0</div><div class="stat-label">Gevonden</div></div>
+          <div class="stat-box"><div class="stat-value" id="stat-avg">0%</div><div class="stat-label">Gem. score</div></div>
+          <div class="stat-box"><div class="stat-value" id="stat-hidden">0</div><div class="stat-label">100% verborgen</div></div>
+        </div>
+        <div class="tab-bar" id="dash-tabs"></div>
+        <div class="table-header"><span>Bedrijf</span><span>Sector</span><span>Score</span><span></span></div>
+        <div id="dash-table"></div>
+        <div style="margin-top:48px"></div>
+      </div>
+
+      <div id="dash-prev" style="display:none; margin-bottom:48px">
+        <div class="section-label">Eerdere scans</div>
+        <div class="history-list" id="dash-prev-list"></div>
+        <div style="margin-top:48px"></div>
+      </div>
+
+      <div class="section-label">Nieuwe scan</div>
+      <div id="dash-scan-form"></div>
+    </div>
+
+    <!-- Scan page -->
+    <div id="page-scan" class="page" style="max-width:480px">
+      <div id="scan-form"></div>
+    </div>
+
+    <!-- History page -->
+    <div id="page-history" class="page">
+      <div id="history-content"></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modal" style="display:none" onclick="closeModal()">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <div id="modal-content"></div>
+  </div>
+</div>
+
+<script>
+const SECTORS = ["Schoonmaak","Logistiek","Ingenieurs"];
+const CRITERIA = [
+  {key:"noSocials",label:"Geen social media"},
+  {key:"noJobBoards",label:"Geen vacaturebanken"},
+  {key:"noRecruitmentAds",label:"Geen wervingsadvertenties"},
+];
+const PROXY = "https://verborgen-proxy.vercel.app/api/proxy";
+
+let selectedSectors = [...SECTORS];
+let companyCount = 5;
+let history = [];
+let activeSector = "Alle";
+let sideOpen = false;
+
+// Sidebar
+function toggleSidebar() {
+  sideOpen = !sideOpen;
+  document.getElementById("sidebar").classList.toggle("open", sideOpen);
+  const icon = document.getElementById("toggle-icon");
+  icon.innerHTML = sideOpen
+    ? '<path d="M15 18l-6-6 6-6"/>'
+    : '<path d="M9 18l6-6-6-6"/>';
+}
+
+// Navigation
+function navigate(page, btn) {
+  document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
+  document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
+  document.getElementById("page-" + page).classList.add("active");
+  if (btn) btn.classList.add("active");
+  document.getElementById("topbar").textContent =
+    page === "dashboard" ? "Dashboard" : page === "scan" ? "Nieuwe scan" : "Geschiedenis";
+  if (page === "history") renderHistory();
+}
+
+// Score bar HTML
+function scoreBarHTML(score) {
+  const pct = Math.round((score / 3) * 100);
+  return `<div class="score-bar-wrap"><div class="score-track"><div class="score-fill" style="width:${pct}%"></div></div><span class="score-pct">${pct}%</span></div>`;
+}
+
+// Scan form HTML
+function scanFormHTML(id) {
+  return `
+    <label class="form-label">Sectoren</label>
+    <div class="sector-btns" id="sector-btns-${id}">
+      ${SECTORS.map(s => `<button class="sector-btn ${selectedSectors.includes(s)?'active':''}" onclick="toggleSector('${s}','${id}')">${s}</button>`).join("")}
+    </div>
+    <div class="slider-wrap">
+      <label class="form-label">Bedrijven per sector — <span id="count-label-${id}">${companyCount}</span></label>
+      <input type="range" min="3" max="15" step="1" value="${companyCount}" oninput="updateCount(this.value,'${id}')"/>
+      <div class="slider-labels"><span>3</span><span>15</span></div>
+    </div>
+    <div class="error-msg" id="error-${id}" style="display:none"></div>
+    <button class="btn-primary" id="scan-btn-${id}" onclick="startScan('${id}')">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      Start scan
+    </button>`;
+}
+
+function toggleSector(s, formId) {
+  if (selectedSectors.includes(s)) {
+    if (selectedSectors.length > 1) selectedSectors = selectedSectors.filter(x => x !== s);
+  } else {
+    selectedSectors.push(s);
+  }
+  document.querySelectorAll(`#sector-btns-${formId} .sector-btn`).forEach(btn => {
+    btn.classList.toggle("active", selectedSectors.includes(btn.textContent));
+  });
+}
+
+function updateCount(val, formId) {
+  companyCount = Number(val);
+  document.querySelectorAll(`[id^="count-label-"]`).forEach(el => el.textContent = val);
+  document.querySelectorAll("input[type=range]").forEach(el => el.value = val);
+}
+
+async function startScan(formId) {
+  const btn = document.getElementById("scan-btn-" + formId);
+  const errEl = document.getElementById("error-" + formId);
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Scannen...';
+  errEl.style.display = "none";
+
+  try {
+    const results = (await Promise.all(selectedSectors.map(scanSector))).flat();
+    const now = new Date();
+    history.unshift({
+      id: Date.now(),
+      label: selectedSectors.join(", "),
+      date: now.toLocaleDateString("nl-NL", {day:"numeric",month:"long",year:"numeric"}),
+      results,
+      sectors: [...selectedSectors],
+    });
+    activeSector = "Alle";
+    renderDashboard();
+    navigate("dashboard");
+    document.querySelectorAll(".nav-btn").forEach(b => b.classList.toggle("active", b.dataset.page === "dashboard"));
+  } catch(e) {
+    errEl.textContent = "Scan mislukt: " + e.message;
+    errEl.style.display = "block";
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>Start scan';
+}
+
+async function scanSector(sector) {
+  const prompt = `Je bent een recruitment data-analist. Zoek ${companyCount} echte Nederlandse bedrijven in de sector "${sector}".
+Analyseer: noSocials (geen actieve social media), noJobBoards (geen vacaturebanken), noRecruitmentAds (geen betaalde wervingsadvertenties).
+Reageer ALLEEN met JSON-array, geen backticks of uitleg:
+[{"name":"...","website":"...","sector":"${sector}","scores":{"noSocials":true,"noJobBoards":false,"noRecruitmentAds":true},"summary":"..."}]`;
+
+  const res = await fetch(PROXY, {
+    method: "POST",
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 1200,
+      tools: [{type:"web_search_20250305",name:"web_search"}],
+      messages: [{role:"user",content:prompt}]
+    })
+  });
+
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const data = await res.json();
+  if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
+
+  const text = (data.content||[]).map(i => i.text||"").filter(Boolean).join("\n");
+  const clean = text.replace(/```json|```/g,"").trim();
+  const s = clean.indexOf("["), e = clean.lastIndexOf("]");
+  if (s === -1) throw new Error("Geen JSON ontvangen");
+  return JSON.parse(clean.slice(s, e+1));
+}
+
+// Dashboard
+function renderDashboard() {
+  if (!history.length) return;
+  const latest = history[0];
+  const results = latest.results;
+
+  const avg = Math.round(results.reduce((s,c) => s + Object.values(c.scores).filter(Boolean).length, 0) / results.length * 33.33);
+  const tot = results.filter(c => Object.values(c.scores).filter(Boolean).length === 3).length;
+
+  document.getElementById("stat-found").textContent = results.length;
+  document.getElementById("stat-avg").textContent = avg + "%";
+  document.getElementById("stat-hidden").textContent = tot;
+  document.getElementById("dash-stats").style.display = "block";
+
+  // Tabs
+  const tabs = ["Alle", ...latest.sectors];
+  document.getElementById("dash-tabs").innerHTML = tabs.map(s =>
+    `<button class="tab ${s===activeSector?'active':''}" onclick="setActiveSector('${s}')">${s}</button>`
+  ).join("");
+
+  // Table
+  const filtered = (activeSector === "Alle" ? results : results.filter(c => c.sector === activeSector))
+    .sort((a,b) => Object.values(b.scores).filter(Boolean).length - Object.values(a.scores).filter(Boolean).length);
+
+  document.getElementById("dash-table").innerHTML = filtered.map((c,i) => {
+    const sc = Object.values(c.scores).filter(Boolean).length;
+    return `<div class="table-row" onclick='openCompany(${JSON.stringify(c).replace(/'/g,"&#39;")})'>
+      <div><div class="company-name">${c.name}</div>${c.website?`<div class="company-website">${c.website}</div>`:""}</div>
+      <div class="sector-text">${c.sector}</div>
+      ${scoreBarHTML(sc)}
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="1.8" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg>
+    </div>`;
+  }).join("");
+
+  // Prev scans
+  if (history.length > 1) {
+    document.getElementById("dash-prev").style.display = "block";
+    document.getElementById("dash-prev-list").innerHTML = history.slice(1).map(h =>
+      `<div class="history-row" onclick='openScan(${h.id})'>
+        <div><div class="history-title">${h.label}</div><div class="history-sub">${h.date} · ${h.results.length} bedrijven</div></div>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="1.8" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg>
+      </div>`
+    ).join("");
+  }
+
+  // Scan form
+  document.getElementById("dash-scan-form").innerHTML = scanFormHTML("dash");
+}
+
+function setActiveSector(s) {
+  activeSector = s;
+  renderDashboard();
+}
+
+// History page
+function renderHistory() {
+  const el = document.getElementById("history-content");
+  if (!history.length) {
+    el.innerHTML = '<div class="empty-msg">Nog geen scans uitgevoerd.</div>';
+    return;
+  }
+  el.innerHTML = `<div class="history-list">${history.map(h =>
+    `<div class="history-row" onclick='openScan(${h.id})'>
+      <div><div class="history-title">${h.label}</div><div class="history-sub">${h.date} · ${h.results.length} bedrijven · ${h.sectors.join(", ")}</div></div>
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="1.8" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg>
+    </div>`
+  ).join("")}</div>`;
+}
+
+// Modals
+function openCompany(c) {
+  const sc = Object.values(c.scores).filter(Boolean).length;
+  document.getElementById("modal-content").innerHTML = `
+    <div class="modal-header">
+      <div><div class="modal-title">${c.name}</div>${c.website?`<div class="modal-sub">${c.website}</div>`:""}</div>
+      <button class="close-btn" onclick="closeModal()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <table class="criteria-table">
+      ${CRITERIA.map(cr => `<tr><td style="color:#555">${cr.label}</td><td><span class="${c.scores[cr.key]?'badge-hidden':'badge-visible'}">${c.scores[cr.key]?'Verborgen':'Zichtbaar'}</span></td></tr>`).join("")}
+    </table>
+    <div style="display:flex;align-items:center;gap:16px;margin-bottom:4px">
+      <span style="font-size:11px;color:#aaa;text-transform:uppercase;letter-spacing:.08em;white-space:nowrap">Score</span>
+      ${scoreBarHTML(sc)}
+    </div>
+    ${c.summary?`<div class="modal-summary">${c.summary}</div>`:""}`;
+  document.getElementById("modal").style.display = "flex";
+}
+
+function openScan(id) {
+  const scan = history.find(h => h.id === id);
+  if (!scan) return;
+  const avg = Math.round(scan.results.reduce((s,c) => s + Object.values(c.scores).filter(Boolean).length, 0) / scan.results.length * 33.33);
+  const tot = scan.results.filter(c => Object.values(c.scores).filter(Boolean).length === 3).length;
+  const sorted = [...scan.results].sort((a,b) => Object.values(b.scores).filter(Boolean).length - Object.values(a.scores).filter(Boolean).length);
+
+  document.getElementById("modal-content").innerHTML = `
+    <div class="modal-header" style="border-bottom:1px solid #f0f0f0;padding-bottom:20px;margin-bottom:24px">
+      <div><div class="modal-title">${scan.label}</div><div class="modal-sub">${scan.date}</div></div>
+      <button class="close-btn" onclick="closeModal()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="stats-grid" style="margin-bottom:24px">
+      <div class="stat-box"><div class="stat-value" style="font-size:22px">${scan.results.length}</div><div class="stat-label">Gevonden</div></div>
+      <div class="stat-box"><div class="stat-value" style="font-size:22px">${avg}%</div><div class="stat-label">Gem. score</div></div>
+      <div class="stat-box"><div class="stat-value" style="font-size:22px">${tot}</div><div class="stat-label">100% verborgen</div></div>
+    </div>
+    <div class="table-header" style="grid-template-columns:1fr 90px 80px 20px"><span>Bedrijf</span><span>Sector</span><span>Score</span><span></span></div>
+    ${sorted.map((c,i) => {
+      const sc = Object.values(c.scores).filter(Boolean).length;
+      return `<div class="table-row" style="grid-template-columns:1fr 90px 80px 20px" onclick='openCompany(${JSON.stringify(c).replace(/'/g,"&#39;")})'>
+        <div><div class="company-name">${c.name}</div>${c.website?`<div class="company-website">${c.website}</div>`:""}</div>
+        <div class="sector-text">${c.sector}</div>
+        ${scoreBarHTML(sc)}
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="1.8" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg>
+      </div>`;
+    }).join("")}`;
+  document.getElementById("modal").style.display = "flex";
+}
+
+function closeModal() {
+  document.getElementById("modal").style.display = "none";
+}
+
+// Init
+document.getElementById("dash-scan-form").innerHTML = scanFormHTML("dash");
+document.getElementById("scan-form").innerHTML = scanFormHTML("scan");
+</script>
+</body>
+</html>
