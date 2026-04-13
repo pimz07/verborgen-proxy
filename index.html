@@ -7,7 +7,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500&display=swap" rel="stylesheet"/>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Google Sans', 'Inter', system-ui, sans-serif; background: #fff; color: #111; display: flex; height: 100vh; overflow: hidden; }
+    body { font-family: 'Google Sans', 'Inter', system-ui, sans-serif; background: #fff; color: #111; display: flex; height: 100vh; overflow: hidden; min-width: 0; }
+    #sidebar { flex-shrink: 0; background: #fff; }
     button { font-family: inherit; cursor: pointer; }
     button:focus { outline: none; }
     ::-webkit-scrollbar { width: 3px; } ::-webkit-scrollbar-thumb { background: #ddd; }
