@@ -8,10 +8,12 @@ export default async function handler(req, res) {
 
   try {
     const body = {
-      model: "claude-sonnet-4-20250514",
+      model: "claude-3-5-sonnet-20241022",
       max_tokens: 1200,
       messages: req.body.messages,
     };
+
+    console.log("Sending to Anthropic:", JSON.stringify(body));
 
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
@@ -24,11 +26,10 @@ export default async function handler(req, res) {
     });
 
     const data = await response.json();
-    if (!response.ok) {
-      console.error("Anthropic error:", JSON.stringify(data));
-    }
+    console.log("Anthropic response:", JSON.stringify(data));
     res.status(response.status).json(data);
   } catch (err) {
+    console.error("Proxy error:", err.message);
     res.status(500).json({ error: err.message });
   }
 }
