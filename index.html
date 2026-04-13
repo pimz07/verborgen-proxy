@@ -303,7 +303,6 @@ Reageer ALLEEN met JSON-array, geen backticks of uitleg:
     body: JSON.stringify({
       model: "claude-sonnet-4-20250514",
       max_tokens: 1200,
-      tools: [{type:"web_search_20250305",name:"web_search"}],
       messages: [{role:"user",content:prompt}]
     })
   });
